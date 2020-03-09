@@ -42,7 +42,11 @@ function App() {
         isSignedIn: false, 
         name: '',
         phot:'',
-        email:''
+        email:'',
+        password:'',
+        error:'',
+        isValid:false,
+        existingUser: false
       }
       setUser(signedOutUser);
       console.log(res);
@@ -52,12 +56,75 @@ function App() {
     })
   }
 
-  const handleChange = e => {
-    console.log(e.target.name, e.target.value);
+  const is_valid_email = email =>  /(.+)@(.+){2,}\.(.+){2,}/.test(email); 
+  const hasNumber = input => /\d/.test(input);
+  
+  const switchForm = e =>{
+    const createdUser = {...user};
+    createdUser.existingUser = e.target.checked;
+    setUser(createdUser);
+  }
+  const handleChange = e =>{
+    const newUserInfo = {
+      ...user
+    };
+    //debugger;
+    // perform validation
+    let isValid = true;
+    if(e.target.name === 'email'){
+      isValid = is_valid_email(e.target.value);
+    }
+    if(e.target.name === "password"){
+      isValid = e.target.value.length > 8 && hasNumber(e.target.value);
+    }
+
+    newUserInfo[e.target.name] = e.target.value;
+    newUserInfo.isValid = isValid;
+    setUser(newUserInfo);
   }
 
-  const handleAuthentication = () => {
+  const createAccount = (event) => {
+    if(user.isValid){
+      firebase.auth().createUserWithEmailAndPassword(user.email, user.password)
+      .then(res => {
+        console.log(res);
+        const createdUser = {...user};
+        createdUser.isSignedIn = true;
+        createdUser.error = '';
+        setUser(createdUser);
+      })
+      .catch(err => {
+        console.log(err.message);
+        const createdUser = {...user};
+        createdUser.isSignedIn = false;
+        createdUser.error = err.message;
+        setUser(createdUser);
+      })
+    }
+    event.preventDefault();
+    event.target.reset();
+  } 
 
+  const signInUser = event => {
+    if(user.isValid){
+      firebase.auth().signInWithEmailAndPassword(user.email, user.password)
+      .then(res => {
+        console.log(res);
+        const createdUser = {...user};
+        createdUser.isSignedIn = true;
+        createdUser.error = '';
+        setUser(createdUser);
+      })
+      .catch(err => {
+        console.log(err.message);
+        const createdUser = {...user};
+        createdUser.isSignedIn = false;
+        createdUser.error = err.message;
+        setUser(createdUser);
+      })
+    }
+    event.preventDefault();
+    event.target.reset();
   }
 
   return (
@@ -73,12 +140,28 @@ function App() {
           <img src={user.photo} alt=""></img>
         </div>
       }
-      <h1>Email and Password</h1>
-      <input type="text" onBlur={handleChange} name="email" id="email" placeholder="Your Email"/>
-      <br/>
-      <input type="password" onBlur={handleChange } name="password" id="password" placeholder="Your Password"/>
-      <br/>
-      <button onClick={handleAuthentication}> Create New Account</button>
+      <h1>Our own Authentication</h1>
+      <input type="checkbox" name="switchForm" onChange={switchForm} id="switchForm"/>
+      <label htmlFor="switchForm"> Returning User</label>
+      <form style={{display:user.existingUser ? 'block': 'none'}} onSubmit={signInUser}>
+        <input type="text" onBlur={handleChange} name="email" placeholder="Your Email" required/>
+        <br/>
+        <input type="password" onBlur={handleChange} name="password" placeholder="Your Password" required/>
+        <br/>
+        <input type="submit" value="SignIn"/>
+      </form>
+      <form style={{display:user.existingUser ? 'none': 'block'}} onSubmit={createAccount}>
+        <input type="text" onBlur={handleChange} name="name" placeholder="Your Name" required/>
+        <br/>
+        <input type="text" onBlur={handleChange} name="email" placeholder="Your Email" required/>
+        <br/>
+        <input type="password" onBlur={handleChange} name="password" placeholder="Your Password" required/>
+        <br/>
+        <input type="submit" value="Create Account"/>
+      </form>
+      {
+        user.error && <p style={{color:'red'}}>{user.error}</p>
+      }
     </div>
   );
 }
